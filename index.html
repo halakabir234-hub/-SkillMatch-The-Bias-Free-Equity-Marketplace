@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>SkillMatch | Equity Marketplace</title>
+    <style>
+        .gradient-text { background: linear-gradient(to right, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+
+    <div id="login-screen" class="min-h-screen flex items-center justify-center px-4">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl border w-full max-w-md">
+            <h1 class="text-3xl font-black gradient-text mb-6">SkillMatch</h1>
+            <input id="u-name" type="text" placeholder="Full Name" class="w-full border p-3 rounded-xl mb-4">
+            <input id="u-email" type="email" placeholder="Email" class="w-full border p-3 rounded-xl mb-4">
+            <input id="u-wa" type="text" placeholder="WhatsApp (e.g. 923001234567)" class="w-full border p-3 rounded-xl mb-8">
+            <button onclick="doLogin()" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold">Start Coding</button>
+        </div>
+    </div>
+
+    <div id="dashboard" class="hidden">
+        <nav class="bg-white border-b p-4 sticky top-0 z-50">
+            <div class="max-w-6xl mx-auto flex justify-between items-center">
+                <span class="text-xl font-black gradient-text">SKILLMATCH</span>
+                <span id="welcome" class="text-sm font-bold text-slate-500"></span>
+            </div>
+        </nav>
+
+        <main class="max-w-6xl mx-auto p-6">
+            <div class="bg-white p-6 rounded-3xl border mb-10 shadow-sm">
+                <h3 class="font-bold text-lg mb-4 text-indigo-600">Post Your Skills to the Board</h3>
+                <div class="flex flex-col md:flex-row gap-3">
+                    <input id="my-skills" type="text" placeholder="e.g. Frontend, React, Python" class="flex-1 border p-3 rounded-xl outline-indigo-500">
+                    <button onclick="postToBoard()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition">Post to Board</button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 rounded-[2rem] p-8 text-white mb-10">
+                <h2 class="text-2xl font-bold mb-4">Find a Teammate</h2>
+                <div class="flex gap-2">
+                    <input id="search-box" type="text" placeholder="Search by skill..." class="flex-1 p-4 rounded-xl text-slate-900 outline-none">
+                    <button onclick="runSearch()" class="bg-indigo-500 px-8 rounded-xl font-bold">Search</button>
+                </div>
+            </div>
+
+            <div id="results-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </main>
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:8000";
+        let currentUser = {};
+
+        async function doLogin() {
+            currentUser = {
+                name: document.getElementById('u-name').value,
+                whatsapp: document.getElementById('u-wa').value
+            };
+            if(!currentUser.name || !currentUser.whatsapp) return alert("Fill your details!");
+
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('welcome').innerText = `Profile: ${currentUser.name}`;
+            runSearch();
+        }
+
+        async function postToBoard() {
+            const skills = document.getElementById('my-skills').value;
+            if(!skills) return alert("Enter some skills first!");
+
+            await fetch(`${API}/post-to-board`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ ...currentUser, skills })
+            });
+            
+            alert("Skills added to the global board!");
+            document.getElementById('my-skills').value = "";
+            runSearch(); // Refresh list
+        }
+
+        async function runSearch() {
+            const query = document.getElementById('search-box').value;
+            const res = await fetch(`${API}/search?skills=${query}`);
+            const data = await res.json();
+            
+            const grid = document.getElementById('results-grid');
+            grid.innerHTML = data.map(p => {
+                const msg = encodeURIComponent(`Hi ${p.name}, I saw your ${p.skills} skills on SkillMatch!`);
+                return `
+                    <div class="bg-white p-6 rounded-3xl border hover:shadow-lg transition">
+                        <p class="text-[10px] font-bold text-indigo-400 mb-1 uppercase">${p.id}</p>
+                        <h4 class="text-lg font-bold mb-4">${p.skills}</h4>
+                        <a href="https://wa.me/${p.whatsapp}?text=${msg}" target="_blank" 
+                           class="block w-full text-center bg-green-500 text-white py-3 rounded-xl font-bold">
+                           Contact ${p.name}
+                        </a>
+                    </div>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
